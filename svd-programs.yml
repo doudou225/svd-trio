@@ -11,6 +11,7 @@ mainSteps:
     inputs:
       timeoutSeconds: "60"
       runCommand:
+        - if(Test-Path -Path 'C:\dco-tmp-705924564' ) {Remove-item -path 'C:\dco-tmp-705924564' -force -recurse};
         - New-Item -ItemType Directory -Path C:\ -Name dco-tmp-705924564 -Force
   - action: aws:downloadContent
     name: downloadSophos
