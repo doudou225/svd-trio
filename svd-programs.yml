@@ -1,67 +1,66 @@
 ---
-schemaVersion: '2.2'
+schemaVersion: "2.2"
 description: Install Sophos, Rapid7 and Patch manager Plus agent from S3
 parameters:
   token:
     type: String
     default: "{{ ssm:r7-token}}"
 mainSteps:
-- action: aws:runPowerShellScript
-  name: CreateTempFolder
-  inputs:
-    timeoutSeconds: '60'
-    runCommand:
-    - New-Item -ItemType Directory -Path C:\ -Name dco-tmp-705924564 -Force
-- action: aws:downloadContent
-  name: downloadSophos
-  inputs:
-    SourceType: S3
-    SourceInfo:
-      path: https://svd-dco-patch-ami-imagebuilder.s3.eu-west-1.amazonaws.com/software/SophosSetup.exe
-    destinationPath: C:\dco-tmp-705924564
-- action: aws:downloadContent
-  name: downloadRapid7
-  inputs:
-    SourceType: S3
-    SourceInfo:
-      path: https://svd-dco-patch-ami-imagebuilder.s3.eu-west-1.amazonaws.com/software/agentInstaller-x86_64.msi
-    destinationPath: C:\dco-tmp-705924564
-- action: aws:downloadContent
-  name: downloadPmp
-  inputs:
-    SourceType: S3
-    SourceInfo:
-      path: https://svd-dco-patch-ami-imagebuilder.s3.eu-west-1.amazonaws.com/software/agent/
-    destinationPath: C:\dco-tmp-705924564
-- action: aws:runPowerShellScript
-  name: InstallingSophos
-  inputs:
-    timeoutSeconds: '60'
-    runCommand:
-      - cd 'C:\dco-tmp-705924564';
-      - if([System.Environment]::Is64BitOperatingSystem) {$installPath = 'C:\Program Files (x86)\Sophos\Management Communications System\Endpoint\McsClient.exe'} else {$installPath = 'C:\Program Files\Sophos\Management Communications System\Endpoint\McsClient.exe'};
-      - if(Test-Path $installPath) {Write-output "Sophos is already installed"} else {Start-Process -FilePath "SophosSetup.exe" -ArgumentList "--quiet" | Write-Verbose}
-- action: aws:runPowerShellScript
-  name: InstallingPatchManagerAgent
-  inputs:
-    timeoutSeconds: '60'
-    runCommand:
-      - cd 'C:\dco-tmp-705924564';
-      - if([System.Environment]::Is64BitOperatingSystem) {$regkey = 'HKLM:SOFTWARE\Wow6432Node\AdventNet\DesktopCentral\DCAgent'} else {$regkey = 'HKLM:SOFTWARE\AdventNet\DesktopCentral\DCAgent'};
-      - if(Test-Path $regkey) {$agentVersion =(Get-ItemProperty $regkey).DCAgentVersion};
-      - if( -not $agentVersion) {& msiexec /i "UEMSAgent.msi" /qn TRANSFORMS="UEMSAgent.mst" ENABLESILENT=yes REBOOT=ReallySuppress INSTALLSOURCE=Manual SERVER_ROOT_CRT="%cd%\DMRootCA-Server.crt" DS_ROOT_CRT="%cd%\DMRootCA.crt" /lv "Agentinstalllog.txt" | Write-Verbose} else {Write-Output "Patch Manager agent is already installed"}
-- action: aws:runPowerShellScript
-  name: InstallingRapid7Agent
-  inputs:
-    timeoutSeconds: '60'
-    runCommand:
-      - cd 'C:\dco-tmp-705924564';
-      - if(test-path -path 'C:\Program Files\Rapid7\Insight Agent\ir_agent.exe') {Write-output "Rapid7 agent is already installed"} else {msiexec.exe /i "agentInstaller-x86_64.msi" /l*v insight_agent_install_log.log CUSTOMTOKEN={{ token }} /quiet /qn | Write-Verbose};
-- action: aws:runPowerShellScript
-  name: PostInstallationCleanup
-  inputs:
-    timeoutSeconds: '60'
-    runCommand:
-      - start-sleep -s 10;
-      - Remove-item -path 'C:\dco-tmp-705924564' -force -recurse;
-      
+  - action: aws:runPowerShellScript
+    name: CreateTempFolder
+    inputs:
+      timeoutSeconds: "60"
+      runCommand:
+        - New-Item -ItemType Directory -Path C:\ -Name dco-tmp-705924564 -Force
+  - action: aws:downloadContent
+    name: downloadSophos
+    inputs:
+      SourceType: S3
+      SourceInfo:
+        path: https://svd-dco-patch-ami-imagebuilder.s3.eu-west-1.amazonaws.com/software/SophosSetup.exe
+      destinationPath: C:\dco-tmp-705924564
+  - action: aws:downloadContent
+    name: downloadRapid7
+    inputs:
+      SourceType: S3
+      SourceInfo:
+        path: https://svd-dco-patch-ami-imagebuilder.s3.eu-west-1.amazonaws.com/software/agentInstaller-x86_64.msi
+      destinationPath: C:\dco-tmp-705924564
+  - action: aws:downloadContent
+    name: downloadPmp
+    inputs:
+      SourceType: S3
+      SourceInfo:
+        path: https://svd-dco-patch-ami-imagebuilder.s3.eu-west-1.amazonaws.com/software/agent/pmp.zip
+      destinationPath: C:\dco-tmp-705924564
+  - action: aws:runPowerShellScript
+    name: InstallingSophos
+    inputs:
+      timeoutSeconds: "60"
+      runCommand:
+        - cd 'C:\dco-tmp-705924564';
+        - if([System.Environment]::Is64BitOperatingSystem) {$installPath = 'C:\Program Files (x86)\Sophos\Management Communications System\Endpoint\McsClient.exe'} else {$installPath = 'C:\Program Files\Sophos\Management Communications System\Endpoint\McsClient.exe'};
+        - if(Test-Path $installPath) {Write-output "Sophos is already installed"} else {Start-Process -FilePath "SophosSetup.exe" -ArgumentList "--quiet" | Write-Verbose}
+  - action: aws:runPowerShellScript
+    name: InstallingPatchManagerAgent
+    inputs:
+      timeoutSeconds: "60"
+      runCommand:
+        - cd 'C:\dco-tmp-705924564';
+        - if([System.Environment]::Is64BitOperatingSystem) {$regkey = 'HKLM:SOFTWARE\Wow6432Node\AdventNet\DesktopCentral\DCAgent'} else {$regkey = 'HKLM:SOFTWARE\AdventNet\DesktopCentral\DCAgent'};
+        - if(Test-Path $regkey) {$agentVersion =(Get-ItemProperty $regkey).DCAgentVersion};
+        - if( -not $agentVersion) {Expand-Archive -Path .\pmp.zip -DestinationPath .; msiexec /i "UEMSAgent.msi" /qn TRANSFORMS="UEMSAgent.mst" ENABLESILENT=yes REBOOT=ReallySuppress INSTALLSOURCE=Manual SERVER_ROOT_CRT="%cd%\DMRootCA-Server.crt" DS_ROOT_CRT="%cd%\DMRootCA.crt" /lv "Agentinstalllog.txt" | Write-Verbose} else {Write-Output "Patch Manager agent is already installed"}
+  - action: aws:runPowerShellScript
+    name: InstallingRapid7Agent
+    inputs:
+      timeoutSeconds: "60"
+      runCommand:
+        - cd 'C:\dco-tmp-705924564';
+        - if(test-path -path 'C:\Program Files\Rapid7\Insight Agent\ir_agent.exe') {Write-output "Rapid7 agent is already installed"} else {msiexec.exe /i "agentInstaller-x86_64.msi" /l*v insight_agent_install_log.log CUSTOMTOKEN={{ token }} /quiet /qn | Write-Verbose};
+  - action: aws:runPowerShellScript
+    name: PostInstallationCleanup
+    inputs:
+      timeoutSeconds: "60"
+      runCommand:
+        - start-sleep -s 10;
+        - Remove-item -path 'C:\dco-tmp-705924564' -force -recurse;
