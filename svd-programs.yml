@@ -65,3 +65,4 @@ mainSteps:
       runCommand:
         - start-sleep -s 10;
         - Remove-item -path 'C:\dco-tmp-705924564' -force -recurse;
+# New added line
